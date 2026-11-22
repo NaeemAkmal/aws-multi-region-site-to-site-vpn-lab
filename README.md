@@ -25,7 +25,7 @@ The architecture connects two separate AWS VPC networks through an IPsec VPN tun
 | Private IP | 10.100.0.190 | 10.200.0.206 |
 | VPN Component | Virtual Private Gateway | Customer Gateway |
 | VPN Software | AWS-managed | Libreswan 4.12 |
-| Operating System | Not recorded | Amazon Linux 2023 |
+| Operating System | Amazon Linux 2023 | Amazon Linux 2023 |
 
 Only Tunnel 1 was configured and verified. The second AWS VPN tunnel was not implemented for failover.
 

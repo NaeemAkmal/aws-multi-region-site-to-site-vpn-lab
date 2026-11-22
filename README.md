@@ -360,4 +360,54 @@ Public documentation intentionally excludes original VPN configuration downloads
 
 ## 13. Limitations and Future Improvements
 
-This was a hands
+This was a hands-on learning environment, not a production high-availability deployment.
+
+Future enhancements could include:
+
+- Configuring and validating the second AWS VPN tunnel.
+- Testing automatic failover and recovery.
+- Adding centralized VPN monitoring and alerts.
+- Testing application-level communication.
+- Benchmarking throughput, latency, and packet loss.
+- Implementing stronger operational hardening.
+- Evaluating alternative VPN and multi-Region network architectures.
+
+## 14. Final Results
+
+| Validation | Result |
+|---|---|
+| VPN Tunnel 1 | UP |
+| IKEv2 authentication | Successful |
+| IPsec Child SA | Established |
+| Private EC2 connectivity | Successful |
+| ICMP replies | 4/4 |
+| Packet loss | 0% |
+| Final screenshot RTT | Approximately 200 ms |
+| ESP inbound/outbound traffic | Verified |
+| Static routing | Configured and verified |
+
+## 15. Key Skills Demonstrated
+
+**AWS Cloud Networking:** VPC, EC2, VPN gateways, routing, security groups.
+
+**Linux Administration:** Amazon Linux 2023, Libreswan installation, IP forwarding, service management.
+
+**Network Security:** IKEv2, IPsec, ESP, encryption, authentication, and NAT Traversal.
+
+**Troubleshooting:** Reading system logs, diagnosing IKE negotiation failures, inspecting network traffic, identifying authentication mismatches, and resolving routing issues.
+
+**Verification:** Successful private-IP ping testing and bidirectional encrypted traffic confirmation.
+
+## 16. Conclusion
+
+This project successfully demonstrated secure private-IP connectivity between two AWS Regions using an EC2-based Libreswan Customer Gateway and an AWS Virtual Private Gateway.
+
+Beyond successfully establishing the encrypted VPN connection, the project provided practical experience in diagnosing endpoint configuration errors, authentication failures, and missing static routes.
+
+The final tests confirmed successful communication between the N. Virginia and Mumbai EC2 instances, with zero ICMP packet loss and increasing IPsec ESP traffic counters.
+
+---
+
+**Project:** AWS Multi-Region Site-to-Site VPN Lab  
+**GitHub:** [NaeemAkmal](https://github.com/NaeemAkmal)  
+**Technologies:** AWS VPC • EC2 • Site-to-Site VPN • Amazon Linux 2023 • Libreswan • IKEv2 • IPsec • Linux Networking

@@ -90,7 +90,7 @@ The implemented configuration used static routing and pre-shared-key authenticat
 | VPN Role | AWS VPN endpoint | Customer-managed VPN endpoint |
 | Gateway | Virtual Private Gateway | Customer Gateway |
 | VPN Software | AWS-managed | Libreswan 4.12 |
-| Operating System | Not recorded | Amazon Linux 2023 |
+| Operating System | Amazon Linux 2023 | Amazon Linux 2023 |
 
 ### VPN Configuration
 

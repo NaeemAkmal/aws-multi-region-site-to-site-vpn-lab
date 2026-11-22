@@ -1,133 +1,180 @@
-# AWS Multi-Region Site-to-Site VPN Lab
+# 🔐 AWS Multi-Region Site-to-Site VPN Lab
 
-**Secure Cross-Region EC2 Connectivity Using AWS Site-to-Site VPN, Amazon Linux 2023, Libreswan 4.12, and IKEv2/IPsec**
+### Secure Cross-Region Communication Using AWS, Libreswan, IKEv2 & IPsec
 
-A hands-on cloud networking and security project demonstrating the deployment, configuration, troubleshooting, and verification of an encrypted Site-to-Site VPN between AWS N. Virginia (`us-east-1`) and Mumbai (`ap-south-1`).
+**Amazon Web Services | Cloud Security | Network Security | Linux Administration**
 
-**Project Status:** Successfully tested | **Implementation Date:** November 22, 2026
+![AWS Multi-Region VPN Architecture](images/00-architecture-diagram.png)
 
-## 1. Project Overview
+*Architecture overview: AWS Mumbai and N. Virginia VPCs connected through a Site-to-Site IPsec VPN using an EC2-based Customer Gateway and AWS Virtual Private Gateway.*
 
-The objective of this project was to establish secure communication between two Amazon VPCs deployed in different AWS Regions.
+> **Project Status:** Successfully Implemented & Tested  
+> **Completed:** November 22, 2026  
+> **Environment:** Hands-on AWS Cloud Networking Lab  
+> **Implementation:** Single Operational VPN Tunnel (Tunnel 1)
 
-The N. Virginia VPC hosts an EC2-based customer gateway running **Amazon Linux 2023 and Libreswan 4.12**, while the Mumbai VPC connects through an **AWS Virtual Private Gateway**.
+---
 
-An IPsec VPN tunnel protects traffic traveling between the two networks, allowing the EC2 instances to communicate using their private IPv4 addresses.
+## 📖 Project Overview
 
-The project includes practical experience with VPN negotiation, IKEv2 authentication, Linux IPsec configuration, static routing, packet-level troubleshooting, and encrypted traffic verification.
+This project demonstrates the design, implementation, troubleshooting, and verification of an **AWS Multi-Region Site-to-Site VPN** connecting two isolated Virtual Private Clouds (VPCs) across different AWS Regions.
 
-## 2. Project Objectives
+The goal was to establish secure, encrypted communication between two EC2 instances using their **private IPv4 addresses**, rather than exposing the destination workload through the public internet.
 
-- Configure VPCs in two AWS Regions.
-- Deploy EC2 instances in separate network environments.
-- Configure an AWS Virtual Private Gateway and Customer Gateway.
-- Establish an IKEv2/IPsec Site-to-Site VPN.
-- Use Libreswan as the customer-managed VPN endpoint.
-- Configure static routes between VPC networks.
-- Troubleshoot IPsec authentication and connectivity issues.
-- Verify private IPv4 communication across Regions.
-- Confirm encrypted traffic using ESP counters.
+The architecture connects:
 
-## 3. Network Architecture
+- **AWS Mumbai (`ap-south-1`)** — VPC-A, hosting a private EC2 instance.
+- **AWS N. Virginia (`us-east-1`)** — VPC-B, hosting an Amazon Linux 2023 EC2 instance configured as a customer-managed VPN endpoint using Libreswan 4.12.
 
-| Component | Mumbai | N. Virginia |
+The VPN uses **IKEv2 and IPsec**, with AES-256 encryption, SHA-256 integrity protection, and static routing.
+
+Beyond setting up the VPN, this lab involved identifying and resolving real configuration issues involving IKE negotiation, pre-shared-key identity mapping, duplicated configuration directives, and missing VPN routes.
+
+### Key Achievements
+
+- Established an authenticated IKEv2/IPsec VPN tunnel.
+- Connected two AWS VPC networks across different Regions.
+- Configured Libreswan 4.12 on Amazon Linux 2023.
+- Implemented static VPN and VPC route table entries.
+- Resolved endpoint and authentication configuration failures.
+- Diagnosed and fixed a missing VPN static route.
+- Verified successful EC2-to-EC2 private IPv4 communication.
+- Confirmed bidirectional encrypted traffic through IPsec ESP counters.
+
+---
+
+## 🏗️ Network Architecture
+
+### Architecture Details
+
+| Component | AWS Mumbai | AWS N. Virginia |
 |---|---|---|
-| AWS Region | ap-south-1 | us-east-1 |
-| VPC | VPC-A | VPC-B |
-| VPC CIDR | 10.100.0.0/16 | 10.200.0.0/16 |
-| EC2 private IP | 10.100.0.190 | 10.200.0.206 |
-| VPN role | AWS Virtual Private Gateway | EC2-based Customer Gateway |
-| VPN software | AWS-managed endpoint | Libreswan 4.12 |
-| OS | Not recorded | Amazon Linux 2023 |
+| AWS Region | `ap-south-1` | `us-east-1` |
+| VPC Name | VPC-A | VPC-B |
+| VPC CIDR | `10.100.0.0/16` | `10.200.0.0/16` |
+| EC2 Instance | EC2-A | EC2-B |
+| EC2 Private IPv4 | `10.100.0.190` | `10.200.0.206` |
+| VPN Gateway Role | Virtual Private Gateway | Customer Gateway |
+| VPN Software | AWS-managed VPN endpoint | Libreswan 4.12 |
+| Operating System | Not independently recorded | Amazon Linux 2023 |
+| Routing | Static routes | IPsec traffic selectors |
 
-### Logical Traffic Flow
+### How the Architecture Works
 
-```text
-              AWS Region: N. Virginia
-              ┌──────────────────────────┐
-              │ VPC-B: 10.200.0.0/16     │
-              │                          │
-              │ EC2-B                    │
-              │ 10.200.0.206             │
-              │ Amazon Linux 2023        │
-              │ Libreswan 4.12           │
-              │                          │
-              │ Customer Gateway         │
-              └────────────┬─────────────┘
-                           │
-                  IKEv2 / IPsec VPN
-                  AES-256 / SHA-256
-                           │
-              ┌────────────▼─────────────┐
-              │ AWS Virtual Private      │
-              │ Gateway                  │
-              │                          │
-              │ VPC-A: 10.100.0.0/16     │
-              │                          │
-              │ EC2-A                    │
-              │ 10.100.0.190             │
-              └──────────────────────────┘
-                 AWS Region: Mumbai
-```
+1. The N. Virginia EC2 instance runs Libreswan and acts as the customer-managed VPN endpoint.
+2. AWS provides a Virtual Private Gateway associated with the Mumbai VPC.
+3. An IPsec tunnel establishes encrypted communication between the two endpoints.
+4. Static routing directs the permitted private network traffic through the VPN.
+5. EC2-B communicates with EC2-A using its private IPv4 address.
+6. IKEv2 provides tunnel negotiation and authentication, while IPsec ESP protects the network traffic.
 
-**Architecture note:** This is an AWS Site-to-Site VPN with a self-managed EC2-based customer gateway. It is not VPC peering or Transit Gateway peering.
+**Architecture clarification:** The implementation uses AWS Site-to-Site VPN with a self-managed EC2 Customer Gateway, not VPC Peering or Transit Gateway Peering.
 
-## 4. AWS VPC Deployment
+---
 
-### 4.1 Mumbai VPC-A
+## 🛠️ Technologies & Services Used
 
-The Mumbai network was created with CIDR `10.100.0.0/16`. The destination EC2 workload uses private IPv4 address `10.100.0.190`.
+### AWS Services
 
-![Mumbai VPC-A](images/01-mumbai-vpc.png)
+| Service | Purpose |
+|---|---|
+| Amazon VPC | Isolated cloud networks |
+| Amazon EC2 | Workloads and VPN gateway host |
+| AWS Site-to-Site VPN | Managed VPN tunnel endpoint |
+| Virtual Private Gateway | VPN connectivity for Mumbai VPC |
+| Customer Gateway | Defines the customer-managed VPN endpoint |
+| Elastic IP | Stable public address for the VPN endpoint |
+| Route Tables | Forwarding traffic to remote networks |
+| Security Groups | Controlling permitted instance traffic |
 
-*Figure 1: Mumbai VPC-A and its IPv4 CIDR configuration.*
+### Linux & Security Technologies
 
-### 4.2 N. Virginia VPC-B
+| Technology | Purpose |
+|---|---|
+| Amazon Linux 2023 | EC2-B operating system |
+| Libreswan 4.12 | IPsec VPN implementation |
+| IKEv2 | Key exchange and authentication |
+| IPsec ESP | Encrypted network traffic |
+| AES-256-CBC | Data encryption |
+| SHA-256 | Integrity protection |
+| DH Group 14 | Key exchange |
+| NAT Traversal | IPsec over UDP 4500 |
+| tcpdump | IKE packet inspection |
+| journalctl | VPN service troubleshooting |
+| Linux XFRM | Kernel IPsec processing |
 
-The N. Virginia network was configured with CIDR `10.200.0.0/16`.
+---
 
-EC2-B uses private IP `10.200.0.206` and acts as the Libreswan VPN endpoint.
+## ⚙️ Implementation Process
 
-![Virginia VPC-B](images/02-virginia-vpc.png)
+### Phase 1 — VPC Creation
 
-*Figure 2: N. Virginia VPC-B configuration.*
+Two isolated VPCs were configured in different AWS Regions.
 
-## 5. AWS Site-to-Site VPN Configuration
+#### Mumbai — VPC-A
 
-The VPN architecture uses:
+- Region: `ap-south-1`
+- VPC CIDR: `10.100.0.0/16`
+- Destination instance: EC2-A
+- Destination private IP: `10.100.0.190`
 
-- AWS Virtual Private Gateway associated with the Mumbai VPC.
-- AWS Customer Gateway representing the EC2-B VPN endpoint.
-- AWS Site-to-Site VPN connection using static routing.
-- IKEv2 and IPsec security associations.
-- Pre-shared-key authentication.
+![Mumbai VPC](images/01-mumbai-vpc.png)
 
-The implementation successfully established **Tunnel 1**. Tunnel 2 was not configured for operational failover during this lab.
+*Figure 1: AWS Mumbai VPC-A configured with the 10.100.0.0/16 CIDR.*
 
-![VPN Tunnel Status](images/03-vpn-tunnel-up.png)
+#### N. Virginia — VPC-B
 
-*Figure 3: AWS VPN tunnel details showing Tunnel 1 UP.*
+- Region: `us-east-1`
+- VPC CIDR: `10.200.0.0/16`
+- VPN instance: EC2-B
+- Private IP: `10.200.0.206`
+- OS: Amazon Linux 2023
+- VPN software: Libreswan 4.12
 
-## 6. Libreswan Configuration
+![Virginia VPC](images/02-virginia-vpc.png)
 
-### 6.1 Installation
+*Figure 2: AWS N. Virginia VPC-B configured with the 10.200.0.0/16 CIDR.*
 
-Libreswan was installed on Amazon Linux 2023:
+### Phase 2 — Virtual Private Gateway and Customer Gateway
+
+The AWS VPN infrastructure was configured using a Virtual Private Gateway for the Mumbai network and a Customer Gateway representing the Libreswan instance in N. Virginia.
+
+An AWS Site-to-Site VPN connection was created with **static routing**.
+
+The connection provides two AWS tunnel endpoints, but this lab configured and successfully verified **Tunnel 1 only**.
+
+![AWS VPN Tunnel Status](images/03-vpn-tunnel-up.png)
+
+*Figure 3: AWS VPN Tunnel 1 successfully established. Tunnel 2 remained unconfigured for failover.*
+
+### Phase 3 — Libreswan Installation
+
+Libreswan was installed on the N. Virginia EC2 instance.
 
 ```bash
 sudo dnf install -y libreswan
 ```
 
-The service was enabled using systemd:
+Enable and start the IPsec service:
 
 ```bash
 sudo systemctl enable ipsec
 sudo systemctl start ipsec
 ```
 
-### 6.2 Enable IP Forwarding
+Check its status:
 
-The following settings were used to enable forwarding and disable ICMP redirects:
+```bash
+sudo systemctl status ipsec --no-pager
+```
+
+**Result:** The Libreswan service started successfully on Amazon Linux 2023.
+
+### Phase 4 — Enable IP Forwarding
+
+Linux IP forwarding was configured to support VPN traffic forwarding.
+
+Relevant settings:
 
 ```ini
 net.ipv4.ip_forward=1
@@ -135,17 +182,19 @@ net.ipv4.conf.all.accept_redirects=0
 net.ipv4.conf.all.send_redirects=0
 ```
 
-These settings were stored in a file under `/etc/sysctl.d/` and applied using:
+The settings were configured under `/etc/sysctl.d/` and applied using:
 
 ```bash
 sudo sysctl --system
 ```
 
-### 6.3 IPsec Configuration
+### Phase 5 — Configure IPsec Tunnel
 
-A connection named `Tunnel1` was configured in `/etc/ipsec.d/aws.conf`.
+The VPN connection was configured in:
 
-**Sanitized example:**
+`/etc/ipsec.d/aws.conf`
+
+A sanitized example of the working connection configuration is provided below.
 
 ```ini
 conn Tunnel1
@@ -172,123 +221,170 @@ conn Tunnel1
     dpdaction=restart
 ```
 
-This example omits deployment-specific public IP addresses and authentication secrets.
+Replace the placeholders with the endpoint addresses generated for your own AWS VPN deployment.
 
-**Authentication security:** The pre-shared key was configured separately in `/etc/ipsec.secrets`, with restrictive file permissions. No actual PSKs are included in this repository.
+The actual pre-shared key is deliberately excluded from this example.
 
-### 6.4 Cryptographic Parameters
+### Phase 6 — Secure Authentication
 
-| Parameter | Negotiated configuration |
-|---|---|
-| IKE protocol | IKEv2 |
-| Authentication | Pre-shared key |
-| IKE encryption | AES-256-CBC |
-| Integrity | SHA-256 |
-| DH group | MODP2048 / Group 14 |
-| ESP encryption | AES-256-CBC |
-| NAT Traversal | UDP 4500 |
-| Dead Peer Detection | Enabled |
+The VPN used pre-shared-key authentication.
 
-## 7. Static Routing Configuration
+Secrets were stored separately in:
 
-After the VPN tunnel was established, private IPv4 communication initially failed because the remote network route was missing from the AWS VPN static routing configuration.
+`/etc/ipsec.secrets`
 
-The required route was added:
+File access was restricted:
 
-```text
-Destination: 10.200.0.0/16
+```bash
+sudo chmod 600 /etc/ipsec.secrets
+sudo chown root:root /etc/ipsec.secrets
 ```
+
+The secret file was not included in this repository.
+
+### Phase 7 — VPN and Static Routing
+
+The VPN static route was configured for the N. Virginia network.
+
+| Destination | Purpose |
+|---|---|
+| `10.200.0.0/16` | Remote network reachable over VPN |
 
 ![VPN Static Route](images/04-static-route.png)
 
-*Figure 4: AWS VPN static route to the N. Virginia network.*
+*Figure 4: VPN static route for the remote N. Virginia network.*
 
-The Mumbai EC2 subnet route table also included:
+The Mumbai private subnet route table also included:
 
-| Destination | Target |
-|---|---|
-| 10.100.0.0/16 | local |
-| 10.200.0.0/16 | Virtual Private Gateway |
+| Destination | Target | Status |
+|---|---|---|
+| `10.100.0.0/16` | Local | Active |
+| `10.200.0.0/16` | Virtual Private Gateway | Active |
 
-![Mumbai Route Table](images/08-mumbai-private-route-table.png)
+![Mumbai Private Route Table](images/08-mumbai-private-route-table.png)
 
-*Figure 5: Mumbai private subnet route table showing the remote VPN route.*
+*Figure 5: Mumbai private subnet routing through the AWS Virtual Private Gateway.*
 
-Correct routing was essential to restore end-to-end connectivity after successful IPsec negotiation.
+---
 
-## 8. Troubleshooting and Root Cause Analysis
+## 🔍 Troubleshooting & Root Cause Analysis
 
-Several real configuration issues were identified and resolved.
+The VPN did not establish successfully on the first attempt. Multiple issues were investigated using Linux command-line tools and AWS configuration checks.
 
-### Issue 1: Incorrect VPN Tunnel Endpoint
+### Issue 1 — Incorrect VPN Peer Address
 
-**Symptom:** Libreswan repeatedly retransmitted `IKE_SA_INIT` requests without successfully establishing the VPN.
+**Problem:** The connection repeatedly retransmitted IKEv2 initiation requests without successfully negotiating an IKE security association.
 
-**Investigation:** Reviewed `journalctl` logs, captured UDP 500 traffic with `tcpdump`, and compared the configured peer address with the AWS-generated VPN settings.
+**Symptoms:**
 
-**Root cause:** The peer's public tunnel endpoint address was entered incorrectly.
+```text
+STATE_V2_PARENT_I1
+RETRANSMIT
+No response (or no acceptable response)
+```
 
-**Resolution:** Corrected the endpoint IP in the Libreswan connection configuration.
+**Investigation:**
 
-**Outcome:** The AWS endpoint began responding to IKE initiation traffic.
+- Reviewed Libreswan connection settings.
+- Inspected IPsec logs using `journalctl`.
+- Used `tcpdump` to inspect outbound and inbound IKE traffic.
+- Compared the configured endpoint with the AWS-generated VPN configuration.
 
-### Issue 2: Missing Pre-Shared Key Mapping
+**Root cause:** An incorrect AWS tunnel endpoint address was configured.
 
-**Symptom:**
+**Resolution:** Corrected the peer address in the Libreswan configuration.
+
+**Outcome:** The AWS VPN endpoint began responding to IKE requests.
+
+### Issue 2 — Pre-Shared Key Identity Mismatch
+
+**Problem:** The tunnel reached the authentication stage but failed to locate a matching pre-shared key.
+
+**Error:**
 
 ```text
 authentication failed: no PSK found
 Failed to find our PreShared Key
 ```
 
-**Root cause:** The IPsec secrets entry still referenced the incorrect remote identity.
+**Root cause:** The peer identity in the secrets file did not match the corrected VPN endpoint configuration.
 
-**Resolution:** Updated the peer identity mapping in `/etc/ipsec.secrets`, verified file permissions, and restarted the service.
+**Resolution:** Corrected the identity mapping, verified permissions, and restarted Libreswan.
 
-**Outcome:** IKEv2 authentication completed successfully.
+**Outcome:** IKEv2 authentication succeeded.
 
-### Issue 3: Duplicate Configuration Include
+### Issue 3 — Duplicate Configuration Directive
 
-**Symptom:** The IPsec main configuration included the same connection configuration directory twice.
+**Problem:** The main IPsec configuration included the same connection directory twice.
 
-**Root cause:** An include directive had been appended even though the default configuration already contained it.
+**Root cause:** A configuration include directive had been appended even though it was already present.
 
-**Resolution:** Removed the duplicate directive and validated the configuration.
+**Resolution:** Removed the duplicate include and validated the configuration.
 
-**Outcome:** Connection definitions loaded without duplication.
+**Outcome:** The connection definition loaded cleanly.
 
-### Issue 4: Tunnel UP but Private Ping Failed
+### Issue 4 — VPN UP but Private Connectivity Failed
 
-**Symptom:** IKEv2 and IPsec Child Security Associations were established, but the destination EC2 instance did not respond to private-IP ping tests.
+**Problem:** The VPN tunnel and IPsec security associations were established, but private-IP ping requests to the Mumbai EC2 instance initially failed.
 
-**Root cause:** The AWS VPN static route for the N. Virginia network was missing.
+**Investigation:**
 
-**Resolution:** Added the remote CIDR `10.200.0.0/16` to the VPN static routes and verified VPC routing.
+- Reviewed VPN static routes.
+- Checked VPC route tables.
+- Verified IPsec traffic selectors.
+- Examined the connection state and network configuration.
 
-**Outcome:** Private IPv4 connectivity succeeded.
+**Root cause:** The remote N. Virginia CIDR was missing from the AWS VPN static route configuration.
 
-### Issue 5: Zero IPsec Traffic Counters
+**Resolution:** Added:
 
-**Symptom:** An established IPsec Child SA initially reported zero bytes transferred.
+```text
+10.200.0.0/16
+```
 
-**Investigation:** Generated fresh ICMP traffic, then compared the ESP traffic counters before and after testing.
+to the VPN static routes.
 
-**Outcome:** The inbound and outbound counters increased, confirming that the traffic passed through the encrypted tunnel.
+**Outcome:** Private network connectivity was restored.
 
-**Key takeaway:** A VPN tunnel showing UP does not automatically guarantee successful network connectivity. Authentication, routing, access controls, and application traffic must all be validated.
+### Issue 5 — Zero Encrypted Traffic Counters
 
-## 9. VPN Authentication Verification
+**Problem:** The established Child Security Association initially displayed:
 
-Libreswan connection status was checked using:
+```text
+inBytes=0
+outBytes=0
+```
+
+**Resolution:** Generated new ICMP traffic and checked the counters again.
+
+**Outcome:** Both ESP inbound and outbound counters increased, confirming encrypted traffic processing.
+
+### Troubleshooting Lessons
+
+- Verify VPN endpoint IPs against the AWS-generated configuration.
+- Match PSK identities with the actual VPN connection identities.
+- Inspect existing Linux configuration before adding directives.
+- A tunnel showing UP does not automatically guarantee end-to-end connectivity.
+- Static routing is essential for successful communication.
+- Security Association counters provide evidence of encrypted traffic flow.
+
+---
+
+## ✅ VPN Establishment Verification
+
+Libreswan was checked using:
 
 ```bash
 sudo ipsec status
 ```
 
-Relevant successful states included:
+The final verification included:
 
 ```text
 Total IPsec connections: loaded 1, active 1
+
+IKE SAs: total(1), authenticated(1)
+IPsec SAs: total(1), authenticated(1)
 
 STATE_V2_ESTABLISHED_IKE_SA
 STATE_V2_ESTABLISHED_CHILD_SA
@@ -296,118 +392,174 @@ STATE_V2_ESTABLISHED_CHILD_SA
 
 ![IPsec Established](images/05-ipsec-established.png)
 
-*Figure 6: Successful IKEv2 authentication and established IPsec Child SA.*
+*Figure 6: IKEv2 and IPsec Child Security Associations established successfully.*
 
-## 10. End-to-End Connectivity Testing
+This confirms successful IKE negotiation and IPsec security association establishment.
 
-The following test was performed from the N. Virginia EC2 instance:
+---
+
+## 🌐 EC2-to-EC2 Private Connectivity Test
+
+The connectivity test was performed from EC2-B in N. Virginia to EC2-A in Mumbai.
+
+**Command:**
 
 ```bash
 ping -c 4 -W 2 10.100.0.190
 ```
 
-Observed result:
+**Observed results:**
 
 ```text
-4 packets transmitted, 4 received, 0% packet loss
+4 packets transmitted
+4 packets received
+0% packet loss
 ```
-
-The final screenshot recorded approximately 200 ms average round-trip latency.
 
 ![Successful Private Ping](images/06-successful-ping.png)
 
-*Figure 7: Successful ICMP communication from N. Virginia to Mumbai over the VPN.*
+*Figure 7: Successful ICMP communication between the N. Virginia and Mumbai EC2 instances.*
 
-**Note:** Latency varies with network conditions. The observed RTT is a lab measurement, not a guaranteed VPN performance benchmark.
+### Ping Results
 
-## 11. Encrypted Traffic Verification
+| Metric | Observed result |
+|---|---|
+| Source | N. Virginia EC2-B |
+| Destination | Mumbai EC2-A |
+| Destination IPv4 | `10.100.0.190` |
+| Packets sent | 4 |
+| Packets received | 4 |
+| Packet loss | 0% |
+| Average RTT | Approximately 200 ms |
 
-Encrypted traffic was verified by checking Libreswan traffic counters before and after generating ICMP traffic.
+The final evidence screenshot confirms successful communication using the destination instance's private IPv4 address.
 
-Command:
+---
+
+## 🔒 Encrypted Traffic Verification
+
+IPsec ESP traffic counters were checked to verify that network packets were processed through the encrypted tunnel.
+
+**Command:**
 
 ```bash
 sudo ipsec trafficstatus
 ```
 
-During one verification test, the counters increased as follows:
+The test compared counters before and after a fresh ICMP ping sequence.
 
-| Metric | Before ping | After ping |
-|---|---|---|
+| Traffic direction | Before test | After test |
+|---|---:|---:|
 | ESP inbound | 336 bytes | 672 bytes |
 | ESP outbound | 336 bytes | 672 bytes |
 
-![Encrypted Traffic Verification](images/07-encrypted-traffic.png)
+![Encrypted Traffic](images/07-encrypted-traffic.png)
 
-*Figure 8: Increasing ESP traffic counters after successful ICMP testing.*
+*Figure 8: ESP inbound and outbound byte counters increasing after the ICMP test.*
 
-This provided additional evidence that bidirectional traffic was being processed through the IPsec security association.
-
-## 12. Security Considerations
-
-This lab demonstrates security practices and concepts including:
-
-- Encryption of inter-network traffic using IPsec.
-- IKEv2 authentication.
-- AES-256 encryption and SHA-256-based integrity protection.
-- Restrictive access to pre-shared-key files.
-- Network segmentation using separate VPCs.
-- Explicit traffic selectors.
-- VPC routing and security group validation.
-- Verification of encrypted traffic.
-
-Public documentation intentionally excludes original VPN configuration downloads, pre-shared keys, private SSH material, and kernel output containing cryptographic session keys.
-
-## 13. Limitations and Future Improvements
-
-This was a hands-on learning environment, not a production high-availability deployment.
-
-Future enhancements could include:
-
-- Configuring and validating the second AWS VPN tunnel.
-- Testing automatic failover and recovery.
-- Adding centralized VPN monitoring and alerts.
-- Testing application-level communication.
-- Benchmarking throughput, latency, and packet loss.
-- Implementing stronger operational hardening.
-- Evaluating alternative VPN and multi-Region network architectures.
-
-## 14. Final Results
-
-| Validation | Result |
-|---|---|
-| VPN Tunnel 1 | UP |
-| IKEv2 authentication | Successful |
-| IPsec Child SA | Established |
-| Private EC2 connectivity | Successful |
-| ICMP replies | 4/4 |
-| Packet loss | 0% |
-| Final screenshot RTT | Approximately 200 ms |
-| ESP inbound/outbound traffic | Verified |
-| Static routing | Configured and verified |
-
-## 15. Key Skills Demonstrated
-
-**AWS Cloud Networking:** VPC, EC2, VPN gateways, routing, security groups.
-
-**Linux Administration:** Amazon Linux 2023, Libreswan installation, IP forwarding, service management.
-
-**Network Security:** IKEv2, IPsec, ESP, encryption, authentication, and NAT Traversal.
-
-**Troubleshooting:** Reading system logs, diagnosing IKE negotiation failures, inspecting network traffic, identifying authentication mismatches, and resolving routing issues.
-
-**Verification:** Successful private-IP ping testing and bidirectional encrypted traffic confirmation.
-
-## 16. Conclusion
-
-This project successfully demonstrated secure private-IP connectivity between two AWS Regions using an EC2-based Libreswan Customer Gateway and an AWS Virtual Private Gateway.
-
-Beyond successfully establishing the encrypted VPN connection, the project provided practical experience in diagnosing endpoint configuration errors, authentication failures, and missing static routes.
-
-The final tests confirmed successful communication between the N. Virginia and Mumbai EC2 instances, with zero ICMP packet loss and increasing IPsec ESP traffic counters.
+**Interpretation:** The counters increased in both directions, providing evidence that the VPN processed encrypted traffic during the test.
 
 ---
 
-**Project:** AWS Multi-Region Site-to-Site VPN Lab  
+## 🛡️ Security Considerations
+
+This lab demonstrates the following network security concepts:
+
+- IPsec encryption for inter-network traffic.
+- IKEv2 key negotiation and authentication.
+- AES-256-CBC encryption.
+- SHA-256-based integrity protection.
+- Pre-shared-key authentication.
+- Restricted permissions for credential files.
+- Separate VPC address spaces.
+- Static route and network traffic selector validation.
+- ESP-based encrypted traffic verification.
+
+### Credential and Evidence Safety
+
+The public project documentation must not include:
+
+- VPN pre-shared keys.
+- Original AWS VPN configuration files containing credentials.
+- SSH private keys.
+- Linux XFRM dumps containing encryption or authentication keys.
+- AWS account credentials or tokens.
+- Unredacted sensitive diagnostic logs.
+
+Screenshots are sanitized for public portfolio use.
+
+---
+
+## 📊 Final Project Results
+
+| Validation | Result |
+|---|---|
+| Multi-Region VPC Setup | Successful |
+| Amazon Linux 2023 VPN Host | Configured |
+| Libreswan 4.12 | Operational |
+| IKEv2 Authentication | Successful |
+| IPsec Child SA | Established |
+| VPN Tunnel 1 | UP |
+| VPN Static Routing | Configured |
+| Private EC2-to-EC2 Ping | Successful |
+| ICMP Packet Loss | 0% |
+| Final Ping RTT | Approximately 200 ms |
+| ESP Inbound Traffic | Verified |
+| ESP Outbound Traffic | Verified |
+| Tunnel 2 Failover | Not implemented |
+
+**Overall Outcome:** Successfully established and verified a working IPsec Site-to-Site VPN between AWS Mumbai and N. Virginia.
+
+---
+
+## 🚀 Future Improvements
+
+This implementation was a hands-on lab and not a production-grade high-availability VPN environment.
+
+Potential enhancements include:
+
+1. Configure the second VPN tunnel.
+2. Test tunnel redundancy and automatic failover.
+3. Implement centralized VPN monitoring.
+4. Evaluate additional logging and alerting.
+5. Test application-layer communication.
+6. Measure throughput under sustained traffic.
+7. Explore high-availability customer gateway designs.
+
+---
+
+## 🎓 Skills Demonstrated
+
+**AWS Networking:** VPC, EC2, Virtual Private Gateway, Customer Gateway, VPN, static routing.
+
+**Cloud Security:** IPsec, IKEv2, encryption, authentication, network segmentation.
+
+**Linux Administration:** Amazon Linux 2023, Libreswan, systemd, sysctl, Linux networking.
+
+**Technical Troubleshooting:** Log analysis, IKE packet inspection, PSK mismatch diagnosis, VPN route troubleshooting.
+
+**Validation:** Private connectivity testing, established Security Association verification, and encrypted traffic counter analysis.
+
+---
+
+## 🏁 Conclusion
+
+This project provided practical experience implementing and troubleshooting an AWS Multi-Region Site-to-Site VPN using Libreswan on Amazon Linux 2023.
+
+The main challenge was not simply establishing the IPsec tunnel, but ensuring that network authentication, traffic selectors, routing, and private connectivity worked together.
+
+The final tests confirmed successful private IPv4 communication between the two AWS Regions, with zero ICMP packet loss and increasing ESP traffic counters in both directions.
+
+The project demonstrates hands-on skills relevant to **Cloud Security Engineering, AWS Networking, Network Security, and Linux System Administration**.
+
+---
+
+### Project Information
+
+**Author:** Hafiz Naeem Akmal  
 **GitHub:** [NaeemAkmal](https://github.com/NaeemAkmal)  
-**Technologies:** AWS VPC • EC2 • Site-to-Site VPN • Amazon Linux 2023 • Libreswan • IKEv2 • IPsec • Linux Networking
+**Project Repository:** [AWS Multi-Region Site-to-Site VPN Lab](https://github.com/NaeemAkmal/aws-multi-region-site-to-site-vpn-lab)
+
+**Technologies:** `AWS` · `VPC` · `EC2` · `Site-to-Site VPN` · `Libreswan` · `IKEv2` · `IPsec` · `Cloud Security` · `Linux`
+
+*This project was implemented for hands-on learning, practical networking experience, and technical portfolio documentation.*
